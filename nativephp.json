@@ -1,0 +1,50 @@
+{
+    "namespace": "Fullscreen",
+
+    "bridge_functions": [
+        {
+            "name": "Fullscreen.Enter",
+            "android": "com.kevinbatdorf.plugins.fullscreen.FullscreenFunctions.Enter",
+            "ios": "FullscreenFunctions.Enter",
+            "description": "Enter fullscreen (immersive) mode",
+            "android_params": ["activity"]
+        },
+        {
+            "name": "Fullscreen.Exit",
+            "android": "com.kevinbatdorf.plugins.fullscreen.FullscreenFunctions.Exit",
+            "ios": "FullscreenFunctions.Exit",
+            "description": "Exit fullscreen (immersive) mode",
+            "android_params": ["activity"]
+        },
+        {
+            "name": "Fullscreen.IsActive",
+            "android": "com.kevinbatdorf.plugins.fullscreen.FullscreenFunctions.IsActive",
+            "ios": "FullscreenFunctions.IsActive",
+            "description": "Check whether fullscreen mode is currently active",
+            "android_params": ["activity"]
+        }
+    ],
+
+    "events": [],
+
+    "android": {
+        "permissions": [],
+        "min_version": 21,
+        "dependencies": {
+            "implementation": []
+        }
+    },
+
+    "ios": {
+        "info_plist": {},
+        "min_version": "15.0",
+        "dependencies": {
+            "swift_packages": [],
+            "pods": []
+        }
+    },
+
+    "hooks": {
+        "copy_assets": "nativephp:fullscreen:copy-assets"
+    }
+}
