@@ -36,7 +36,7 @@ const active = await Fullscreen.isActive();
 ## Platform Behavior
 
 - **Android**: Uses `WindowInsetsControllerCompat` with `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`. System bars reappear briefly on edge swipe, then auto-hide.
-- **iOS**: Overrides `prefersStatusBarHidden` and `prefersHomeIndicatorAutoHidden` on the root view controller.
+- **iOS**: Uses a shared `FullscreenState` ObservableObject to drive `.statusBarHidden()` in SwiftUI.
 
 ## License
 
