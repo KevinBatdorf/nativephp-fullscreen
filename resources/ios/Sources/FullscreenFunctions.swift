@@ -16,12 +16,26 @@ class FullscreenState: NSObject {
     static func apply() {
         guard let windowScene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene }).first,
-            let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+            let window = windowScene.windows.first(where: { $0.isKeyWindow }),
+            let rootVC = window.rootViewController
         else { return }
 
         swizzleOnce()
         rootVC.setNeedsStatusBarAppearanceUpdate()
         rootVC.setNeedsUpdateOfHomeIndicatorAutoHidden()
+
+        // Negate safe area insets so content extends into the notch/dynamic island
+        if isFullscreen {
+            let insets = window.safeAreaInsets
+            rootVC.additionalSafeAreaInsets = UIEdgeInsets(
+                top: -insets.top,
+                left: -insets.left,
+                bottom: -insets.bottom,
+                right: -insets.right
+            )
+        } else {
+            rootVC.additionalSafeAreaInsets = .zero
+        }
     }
 
     // MARK: - Method swizzling
