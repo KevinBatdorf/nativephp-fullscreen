@@ -1,15 +1,63 @@
 import Foundation
 import UIKit
-import Combine
+import ObjectiveC
 
-/// Observable state for fullscreen mode.
-/// NativePHPApp and ContentView observe this to apply .statusBarHidden() modifier.
-public class FullscreenState: ObservableObject {
-    public static let shared = FullscreenState()
+/// Tracks fullscreen state and applies it to the root UIViewController.
+///
+/// On iOS, status bar and home indicator visibility are controlled by the
+/// root UIViewController's `prefersStatusBarHidden` and
+/// `prefersHomeIndicatorAutoHidden` properties. Since NativePHP uses a
+/// SwiftUI UIHostingController we can't subclass it, so we swizzle those
+/// methods once and toggle behavior via a static flag.
+enum FullscreenState {
+    static var isFullscreen = false
 
-    @Published public var isFullscreen = false
+    /// Apply the current state to the root view controller.
+    static func apply() {
+        guard let windowScene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene }).first,
+            let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+        else { return }
 
-    private init() {}
+        swizzleOnce()
+        rootVC.setNeedsStatusBarAppearanceUpdate()
+        rootVC.setNeedsUpdateOfHomeIndicatorAutoHidden()
+    }
+
+    // MARK: - Method swizzling
+
+    private static var swizzled = false
+
+    private static func swizzleOnce() {
+        guard !swizzled else { return }
+        swizzled = true
+
+        let vcClass: AnyClass = type(of: UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }!
+            .rootViewController!)
+
+        // Swizzle prefersStatusBarHidden
+        if let original = class_getInstanceMethod(vcClass, #selector(getter: UIViewController.prefersStatusBarHidden)),
+           let replacement = class_getInstanceMethod(FullscreenState.self, #selector(FullscreenState._prefersStatusBarHidden)) {
+            method_setImplementation(original, method_getImplementation(replacement))
+        }
+
+        // Swizzle prefersHomeIndicatorAutoHidden
+        if let original = class_getInstanceMethod(vcClass, #selector(getter: UIViewController.prefersHomeIndicatorAutoHidden)),
+           let replacement = class_getInstanceMethod(FullscreenState.self, #selector(FullscreenState._prefersHomeIndicatorAutoHidden)) {
+            method_setImplementation(original, method_getImplementation(replacement))
+        }
+    }
+
+    @objc private func _prefersStatusBarHidden() -> Bool {
+        return FullscreenState.isFullscreen
+    }
+
+    @objc private func _prefersHomeIndicatorAutoHidden() -> Bool {
+        return FullscreenState.isFullscreen
+    }
 }
 
 enum FullscreenFunctions {
@@ -18,10 +66,12 @@ enum FullscreenFunctions {
     class Enter: BridgeFunction {
         func execute(parameters: [String: Any]) throws -> [String: Any] {
             if Thread.isMainThread {
-                FullscreenState.shared.isFullscreen = true
+                FullscreenState.isFullscreen = true
+                FullscreenState.apply()
             } else {
                 DispatchQueue.main.sync {
-                    FullscreenState.shared.isFullscreen = true
+                    FullscreenState.isFullscreen = true
+                    FullscreenState.apply()
                 }
             }
 
@@ -35,10 +85,12 @@ enum FullscreenFunctions {
     class Exit: BridgeFunction {
         func execute(parameters: [String: Any]) throws -> [String: Any] {
             if Thread.isMainThread {
-                FullscreenState.shared.isFullscreen = false
+                FullscreenState.isFullscreen = false
+                FullscreenState.apply()
             } else {
                 DispatchQueue.main.sync {
-                    FullscreenState.shared.isFullscreen = false
+                    FullscreenState.isFullscreen = false
+                    FullscreenState.apply()
                 }
             }
 
@@ -52,7 +104,7 @@ enum FullscreenFunctions {
     class IsActive: BridgeFunction {
         func execute(parameters: [String: Any]) throws -> [String: Any] {
             return BridgeResponse.success(data: [
-                "active": FullscreenState.shared.isFullscreen
+                "active": FullscreenState.isFullscreen
             ])
         }
     }
