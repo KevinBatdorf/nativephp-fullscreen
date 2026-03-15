@@ -9,7 +9,7 @@ import ObjectiveC
 /// `prefersHomeIndicatorAutoHidden` properties. Since NativePHP uses a
 /// SwiftUI UIHostingController we can't subclass it, so we swizzle those
 /// methods once and toggle behavior via a static flag.
-enum FullscreenState {
+class FullscreenState: NSObject {
     static var isFullscreen = false
 
     /// Apply the current state to the root view controller.
@@ -32,11 +32,12 @@ enum FullscreenState {
         guard !swizzled else { return }
         swizzled = true
 
-        let vcClass: AnyClass = type(of: UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-            .first { $0.isKeyWindow }!
-            .rootViewController!)
+        guard let windowScene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene }).first,
+            let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController
+        else { return }
+
+        let vcClass: AnyClass = type(of: rootVC)
 
         // Swizzle prefersStatusBarHidden
         if let original = class_getInstanceMethod(vcClass, #selector(getter: UIViewController.prefersStatusBarHidden)),
