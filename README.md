@@ -35,8 +35,8 @@ const active = await Fullscreen.isActive();
 
 ## Platform Behavior
 
-- **Android**: Uses `WindowInsetsControllerCompat` with `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`. System bars reappear briefly on edge swipe, then auto-hide.
-- **iOS**: Uses a shared `FullscreenState` ObservableObject to drive `.statusBarHidden()` in SwiftUI.
+- **Android**: Uses `WindowInsetsControllerCompat` with `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`. System bars reappear briefly on edge swipe, then auto-hide. Fullscreen persists across page navigations natively.
+- **iOS**: Swizzles the root UIViewController to hide the status bar and home indicator. Negates safe area insets so content extends into the notch/dynamic island. Injects CSS to zero out NativePHP's safe area variables (`--inset-*`, `--sat/sar/sab/sal`) and removes `body.nativephp-safe-area` padding. A `WKUserScript` at document start reads a `sessionStorage` flag to apply fullscreen CSS before the page renders, preventing flash-of-insets on navigation. A KVO observer on `WKWebView.isLoading` re-injects CSS after each page load. Orientation changes are handled automatically.
 
 ## License
 
