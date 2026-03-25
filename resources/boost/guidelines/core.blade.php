@@ -53,4 +53,4 @@ const active = await Fullscreen.isActive();
 ### Platform Behavior
 
 - **Android**: Uses `WindowInsetsControllerCompat` with `BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`. System bars reappear briefly on edge swipe, then auto-hide.
-- **iOS**: Overrides `prefersStatusBarHidden` and `prefersHomeIndicatorAutoHidden` on the root view controller. The home indicator dims but remains accessible.
+- **iOS**: Swizzles the root UIViewController to hide the status bar and home indicator. Negates safe area insets so content extends into the notch/dynamic island. Injects CSS to zero out NativePHP's safe area variables and removes `body.nativephp-safe-area` padding. Fullscreen persists across page navigations via `sessionStorage` and a `WKUserScript` at document start.

@@ -21,6 +21,8 @@ import WebKit
 class FullscreenState: NSObject {
     static var isFullscreen = false
 
+    private static let sessionStorageKey = "__nativephp_fullscreen"
+
     /// Whether we've registered for orientation change notifications.
     private static var observingOrientation = false
 
@@ -91,7 +93,7 @@ class FullscreenState: NSObject {
         if isFullscreen {
             let js = """
             (function() {
-                try { sessionStorage.setItem('__nativephp_fullscreen', '1'); } catch(e) {}
+                try { sessionStorage.setItem('\(sessionStorageKey)', '1'); } catch(e) {}
                 document.documentElement.style.setProperty('--inset-top', '0px');
                 document.documentElement.style.setProperty('--inset-right', '0px');
                 document.documentElement.style.setProperty('--inset-bottom', '0px');
@@ -112,7 +114,7 @@ class FullscreenState: NSObject {
             let insets = window.safeAreaInsets
             let js = """
             (function() {
-                try { sessionStorage.removeItem('__nativephp_fullscreen'); } catch(e) {}
+                try { sessionStorage.removeItem('\(sessionStorageKey)'); } catch(e) {}
                 document.documentElement.style.setProperty('--inset-top', '\(insets.top)px');
                 document.documentElement.style.setProperty('--inset-right', '\(insets.right)px');
                 document.documentElement.style.setProperty('--inset-bottom', '\(insets.bottom)px');
@@ -157,7 +159,7 @@ class FullscreenState: NSObject {
         let source = """
         (function() {
             try {
-                if (sessionStorage.getItem('__nativephp_fullscreen') === '1') {
+                if (sessionStorage.getItem('\(sessionStorageKey)') === '1') {
                     var s = document.createElement('style');
                     s.id = 'nativephp-fullscreen-style';
                     s.textContent = ':root { --sat: 0px !important; --sar: 0px !important; --sab: 0px !important; --sal: 0px !important; --inset-top: 0px !important; --inset-right: 0px !important; --inset-bottom: 0px !important; --inset-left: 0px !important; } body.nativephp-safe-area { padding-top: 0 !important; }';

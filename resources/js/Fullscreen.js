@@ -28,6 +28,10 @@ async function bridgeCall(method, params = {}) {
         body: JSON.stringify({ method, params })
     });
 
+    if (!response.ok) {
+        throw new Error(`Native call failed with status ${response.status}`);
+    }
+
     const result = await response.json();
 
     if (result.status === 'error') {

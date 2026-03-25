@@ -441,8 +441,8 @@ describe('iOS Swift Code', function () {
     it('uses method swizzling for view controller override', function () {
         $content = file_get_contents($this->pluginPath.'/resources/ios/Sources/FullscreenFunctions.swift');
 
-        expect($content)->toContain('method_exchangeImplementations');
-        expect($content)->toContain('ensureSwizzled');
+        expect($content)->toContain('method_setImplementation');
+        expect($content)->toContain('swizzleOnce');
     });
 
     it('guards against double swizzling', function () {
