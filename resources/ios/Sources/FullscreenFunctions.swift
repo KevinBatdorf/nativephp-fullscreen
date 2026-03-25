@@ -21,7 +21,7 @@ import WebKit
 class FullscreenState: NSObject {
     static var isFullscreen = false
 
-    private static let sessionStorageKey = "__nativephp_fullscreen"
+    private static let sessionStorageKey = "__kevinbatdorf_fullscreen"
 
     /// Whether we've registered for orientation change notifications.
     private static var observingOrientation = false
