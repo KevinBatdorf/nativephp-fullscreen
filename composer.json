@@ -3,6 +3,7 @@
     "description": "Enter and exit fullscreen (immersive) mode for NativePHP Mobile apps",
     "version": "0.1.0",
     "type": "nativephp-plugin",
+    "license": "MIT",
     "authors": [
         {
             "name": "Kevin Batdorf",
