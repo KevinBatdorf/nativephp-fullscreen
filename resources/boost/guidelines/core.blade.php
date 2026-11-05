@@ -33,9 +33,9 @@ $active = Fullscreen::isActive();
 - `Fullscreen::exit()`: Exit fullscreen mode
 - `Fullscreen::isActive()`: Check whether fullscreen mode is currently active
 
-### Fullscreen on Launch (Android)
+### Fullscreen on Launch
 
-`Fullscreen::enter()` only runs once PHP has booted, so the bars show for the first seconds of a cold start. Set `NATIVEPHP_FULLSCREEN_ON_LAUNCH=true` in `.env` and rebuild to hide them natively from the first frame and on every resume. `Fullscreen::exit()` turns the re-hiding off until `Fullscreen::enter()` is called again. Off by default.
+`Fullscreen::enter()` only runs once PHP has booted, so the bars show for the first seconds of a cold start. Set `NATIVEPHP_FULLSCREEN_ON_LAUNCH=true` in `.env` and rebuild to hide them natively from the first frame on Android and iOS. `Fullscreen::exit()` still shows them, and they stay shown until `Fullscreen::enter()` is called again. Off by default.
 
 ### JavaScript Usage (Vue/React/Inertia)
 

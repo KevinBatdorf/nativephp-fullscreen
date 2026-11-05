@@ -230,6 +230,54 @@ class FullscreenState: NSObject {
         loadingObservation = nil
     }
 
+    // MARK: - Fullscreen on launch
+
+    private static var keyWindowObserver: NSObjectProtocol?
+
+    /// Called from the app's init, before any window exists.
+    static func startOnLaunch() {
+        isFullscreen = true
+
+        keyWindowObserver = NotificationCenter.default.addObserver(
+            forName: UIWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard isFullscreen,
+                  (notification.object as? UIWindow)?.rootViewController != nil
+            else { return }
+
+            if let observer = keyWindowObserver {
+                NotificationCenter.default.removeObserver(observer)
+                keyWindowObserver = nil
+            }
+
+            apply()
+            // The window's safe area may still be zero on this pass.
+            DispatchQueue.main.async {
+                if isFullscreen { apply() }
+            }
+            applyWhenWebViewAppears(attemptsLeft: 120)
+        }
+    }
+
+    /// NativePHP creates the WebView only after PHP boots, and native-only apps never do.
+    private static func applyWhenWebViewAppears(attemptsLeft: Int) {
+        guard isFullscreen, attemptsLeft > 0 else { return }
+
+        if let window = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene }).first?
+            .windows.first(where: { $0.isKeyWindow }),
+           findWebView(in: window) != nil {
+            apply()
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            applyWhenWebViewAppears(attemptsLeft: attemptsLeft - 1)
+        }
+    }
+
     // MARK: - Method swizzling
 
     private static var swizzled = false

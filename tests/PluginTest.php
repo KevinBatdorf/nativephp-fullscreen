@@ -809,6 +809,29 @@ describe('Fullscreen on launch', function () {
         expect($content)->toMatch('/onActivityResumed\(activity: Activity\) \{\s*if \(!FullscreenOnLaunch\.wanted\) return/');
     });
 
+    it('writes the setting into the iOS Info.plist', function () {
+        $content = file_get_contents($this->pluginPath.'/src/Commands/CopyAssetsCommand.php');
+
+        expect($content)->toContain("'NativePHPFullscreenOnLaunch'");
+        expect($content)->toContain("'UIStatusBarHidden'");
+    });
+
+    it('registers an iOS init function that reads the setting', function () {
+        $manifest = json_decode(file_get_contents($this->manifestPath), true);
+        $content = file_get_contents($this->pluginPath.'/resources/ios/Sources/FullscreenOnLaunch.swift');
+
+        expect($manifest['ios']['init_function'])->toBe('registerFullscreenOnLaunch');
+        expect($content)->toContain('func registerFullscreenOnLaunch()');
+        expect($content)->toContain('forInfoDictionaryKey: "NativePHPFullscreenOnLaunch"');
+    });
+
+    it('stops applying on iOS once exit is called', function () {
+        $content = file_get_contents($this->pluginPath.'/resources/ios/Sources/FullscreenFunctions.swift');
+
+        expect($content)->toContain('static func startOnLaunch()');
+        expect($content)->toMatch('/func applyWhenWebViewAppears\(attemptsLeft: Int\) \{\s*guard isFullscreen, attemptsLeft > 0/');
+    });
+
     it('tracks enter and exit so resume respects them', function () {
         $content = file_get_contents($this->pluginPath.'/resources/android/src/FullscreenFunctions.kt');
 

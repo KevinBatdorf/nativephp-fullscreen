@@ -4,9 +4,10 @@ All notable changes to `kevinbatdorf/nativephp-fullscreen` are documented here.
 
 ## v0.2.0 — 2026-11-05
 
-- `NATIVEPHP_FULLSCREEN_ON_LAUNCH=true` hides the system bars on Android from
-  the app's first frame, before PHP boots, and again on every resume until
-  `Fullscreen::exit()` is called. Off by default.
+- `NATIVEPHP_FULLSCREEN_ON_LAUNCH=true` hides the system bars from the app's
+  first frame, before PHP boots, until `Fullscreen::exit()` is called. Off by
+  default. Android also re-hides them on every resume; iOS hides the status
+  bar on the launch screen too.
 
 ## v0.1.1 — 2026-08-17
 

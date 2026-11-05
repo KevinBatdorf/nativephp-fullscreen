@@ -23,17 +23,18 @@ Fullscreen::exit();
 $active = Fullscreen::isActive();
 ```
 
-## Fullscreen on launch (Android)
+## Fullscreen on launch
 
-`Fullscreen::enter()` can only run once PHP has booted, which on a cold start can take several seconds. To hide the status and navigation bars from the app's first frame instead, set this in `.env`:
+`Fullscreen::enter()` can only run once PHP has booted, which on a cold start can take several seconds. To hide the system bars from the app's first frame instead, set this in `.env`:
 
 ```env
 NATIVEPHP_FULLSCREEN_ON_LAUNCH=true
 ```
 
-It's read when the app is built, so rebuild after changing it. With it on, the bars are also hidden again each time the app comes back to the foreground. Calling `Fullscreen::exit()` stops that until `Fullscreen::enter()` is called again. Off by default.
+It's read when the app is built, so rebuild after changing it. Off by default. `Fullscreen::exit()` still shows the bars, and they stay shown until `Fullscreen::enter()` is called again.
 
-Android only. Android 12 and later still show the status bar on the system splash screen, before the app's first frame; nothing in the app can hide it there.
+- **Android**: the bars are hidden before the first frame and again each time the app comes back to the foreground. Android 12 and later still show the status bar on the system splash screen, before the app's first frame; nothing in the app can hide it there.
+- **iOS**: the status bar is hidden from the launch screen on (`UIStatusBarHidden` in Info.plist), and the status bar and home indicator stay hidden once the app's window appears. Web pages get the same safe-area CSS as `Fullscreen::enter()` once NativePHP's WebView loads.
 
 ## JavaScript
 

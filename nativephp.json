@@ -45,6 +45,7 @@
     "ios": {
         "info_plist": {},
         "min_version": "15.0",
+        "init_function": "registerFullscreenOnLaunch",
         "dependencies": {
             "swift_packages": [],
             "pods": []

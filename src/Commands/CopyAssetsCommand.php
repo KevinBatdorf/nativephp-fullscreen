@@ -17,7 +17,7 @@ class CopyAssetsCommand extends NativePluginHookCommand
         }
 
         if ($this->isIos()) {
-            $this->info('No iOS assets to copy for Fullscreen.');
+            $this->writeIosLaunchSetting();
         }
 
         return self::SUCCESS;
@@ -42,5 +42,78 @@ class CopyAssetsCommand extends NativePluginHookCommand
         XML);
 
         $this->info("Fullscreen on launch: {$value}");
+    }
+
+    private function writeIosLaunchSetting(): void
+    {
+        $on = (bool) config('fullscreen.on_launch');
+
+        foreach (['NativePHP/Info.plist', 'NativePHP-simulator-Info.plist'] as $file) {
+            $path = $this->buildPath().'/'.$file;
+
+            if (! is_file($path)) {
+                continue;
+            }
+
+            $plist = new \DOMDocument;
+            $plist->load($path);
+            $dict = $plist->getElementsByTagName('dict')->item(0);
+
+            // Only remove UIStatusBarHidden if this setting added it, so an app's own value survives.
+            $wasOn = $this->plistBool($dict, 'NativePHPFullscreenOnLaunch');
+
+            $this->setPlistBool($plist, $dict, 'NativePHPFullscreenOnLaunch', $on);
+
+            if ($on) {
+                $this->setPlistBool($plist, $dict, 'UIStatusBarHidden', true);
+            } elseif ($wasOn) {
+                $this->removePlistKey($dict, 'UIStatusBarHidden');
+            }
+
+            $plist->save($path);
+        }
+
+        $this->info('Fullscreen on launch: '.($on ? 'true' : 'false'));
+    }
+
+    private function plistKey(\DOMElement $dict, string $key): ?\DOMElement
+    {
+        foreach ($dict->childNodes as $node) {
+            if ($node instanceof \DOMElement && $node->tagName === 'key' && $node->textContent === $key) {
+                return $node;
+            }
+        }
+
+        return null;
+    }
+
+    private function plistBool(\DOMElement $dict, string $key): bool
+    {
+        $value = $this->plistKey($dict, $key)?->nextElementSibling;
+
+        return $value?->tagName === 'true';
+    }
+
+    private function setPlistBool(\DOMDocument $plist, \DOMElement $dict, string $key, bool $value): void
+    {
+        $this->removePlistKey($dict, $key);
+
+        $dict->appendChild($plist->createElement('key', $key));
+        $dict->appendChild($plist->createElement($value ? 'true' : 'false'));
+    }
+
+    private function removePlistKey(\DOMElement $dict, string $key): void
+    {
+        $node = $this->plistKey($dict, $key);
+
+        if ($node === null) {
+            return;
+        }
+
+        if ($node->nextElementSibling) {
+            $dict->removeChild($node->nextElementSibling);
+        }
+
+        $dict->removeChild($node);
     }
 }
