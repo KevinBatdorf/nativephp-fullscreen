@@ -32,7 +32,14 @@
         "min_version": 21,
         "dependencies": {
             "implementation": []
-        }
+        },
+        "providers": [
+            {
+                "name": "com.kevinbatdorf.plugins.fullscreen.FullscreenLaunchProvider",
+                "authorities": "${applicationId}.nativephp-fullscreen",
+                "exported": false
+            }
+        ]
     },
 
     "ios": {

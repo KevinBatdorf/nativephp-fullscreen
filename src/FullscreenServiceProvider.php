@@ -9,6 +9,8 @@ class FullscreenServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__.'/../config/fullscreen.php', 'fullscreen');
+
         $this->app->singleton(Fullscreen::class, function () {
             return new Fullscreen;
         });

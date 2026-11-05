@@ -762,3 +762,57 @@ describe('Error Handling', function () {
         expect($section)->toContain('BridgeResponse.error');
     });
 });
+
+// ---------------------------------------------------------------------------
+// Fullscreen on launch
+// ---------------------------------------------------------------------------
+
+describe('Fullscreen on launch', function () {
+    it('is off by default', function () {
+        $content = file_get_contents($this->pluginPath.'/config/fullscreen.php');
+
+        expect($content)->toContain("env('NATIVEPHP_FULLSCREEN_ON_LAUNCH', false)");
+    });
+
+    it('merges its config in the service provider', function () {
+        $content = file_get_contents($this->pluginPath.'/src/FullscreenServiceProvider.php');
+
+        expect($content)->toContain("mergeConfigFrom(__DIR__.'/../config/fullscreen.php', 'fullscreen')");
+    });
+
+    it('writes the setting into the Android build, on or off', function () {
+        $content = file_get_contents($this->pluginPath.'/src/Commands/CopyAssetsCommand.php');
+
+        expect($content)->toContain("config('fullscreen.on_launch') ? 'true' : 'false'");
+        expect($content)->toContain('/app/src/main/res/values');
+        expect($content)->toContain('<bool name="nativephp_fullscreen_on_launch">{$value}</bool>');
+    });
+
+    it('declares the launch provider in the Android manifest', function () {
+        $manifest = json_decode(file_get_contents($this->manifestPath), true);
+        $provider = $manifest['android']['providers'][0];
+
+        expect($provider['name'])->toBe('com.kevinbatdorf.plugins.fullscreen.FullscreenLaunchProvider');
+        expect($provider['exported'])->toBeFalse();
+    });
+
+    it('reads the setting the hook writes', function () {
+        $content = file_get_contents($this->pluginPath.'/resources/android/src/FullscreenOnLaunch.kt');
+
+        expect($content)->toContain('class FullscreenLaunchProvider : ContentProvider()');
+        expect($content)->toContain('"nativephp_fullscreen_on_launch", "bool"');
+    });
+
+    it('only re-hides on resume while fullscreen is wanted', function () {
+        $content = file_get_contents($this->pluginPath.'/resources/android/src/FullscreenOnLaunch.kt');
+
+        expect($content)->toMatch('/onActivityResumed\(activity: Activity\) \{\s*if \(!FullscreenOnLaunch\.wanted\) return/');
+    });
+
+    it('tracks enter and exit so resume respects them', function () {
+        $content = file_get_contents($this->pluginPath.'/resources/android/src/FullscreenFunctions.kt');
+
+        expect(($this->extractClassSection)($content, 'Enter'))->toContain('FullscreenOnLaunch.wanted = true');
+        expect(($this->extractClassSection)($content, 'Exit'))->toContain('FullscreenOnLaunch.wanted = false');
+    });
+});

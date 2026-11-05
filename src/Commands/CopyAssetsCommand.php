@@ -13,7 +13,7 @@ class CopyAssetsCommand extends NativePluginHookCommand
     public function handle(): int
     {
         if ($this->isAndroid()) {
-            $this->info('No Android assets to copy for Fullscreen.');
+            $this->writeAndroidLaunchSetting();
         }
 
         if ($this->isIos()) {
@@ -21,5 +21,26 @@ class CopyAssetsCommand extends NativePluginHookCommand
         }
 
         return self::SUCCESS;
+    }
+
+    // Written when off too, so turning the setting off takes effect.
+    private function writeAndroidLaunchSetting(): void
+    {
+        $value = config('fullscreen.on_launch') ? 'true' : 'false';
+        $dir = $this->buildPath().'/app/src/main/res/values';
+
+        if (! $this->ensureDirectory($dir)) {
+            return;
+        }
+
+        file_put_contents($dir.'/nativephp_fullscreen.xml', <<<XML
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+            <bool name="nativephp_fullscreen_on_launch">{$value}</bool>
+        </resources>
+
+        XML);
+
+        $this->info("Fullscreen on launch: {$value}");
     }
 }
