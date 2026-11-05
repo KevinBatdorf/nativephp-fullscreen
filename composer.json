@@ -11,6 +11,7 @@
     ],
     "require": {
         "php": "^8.2",
+        "ext-dom": "*",
         "nativephp/mobile": "^3.0 || ^4.0 || dev-element"
     },
     "require-dev": {
