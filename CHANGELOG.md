@@ -2,7 +2,7 @@
 
 All notable changes to `kevinbatdorf/nativephp-fullscreen` are documented here.
 
-## v0.2.0 — 2026-11-05
+## v0.2.0 — 2026-11-06
 
 - `NATIVEPHP_FULLSCREEN_ON_LAUNCH=true` hides the system bars from the app's
   first frame, before PHP boots, until `Fullscreen::exit()` is called. Off by
