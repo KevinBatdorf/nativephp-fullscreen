@@ -2,6 +2,7 @@
 
 namespace KevinBatdorf\Fullscreen\Commands;
 
+use KevinBatdorf\Fullscreen\LaunchSetting;
 use Native\Mobile\Plugins\Commands\NativePluginHookCommand;
 
 class CopyAssetsCommand extends NativePluginHookCommand
@@ -12,12 +13,18 @@ class CopyAssetsCommand extends NativePluginHookCommand
 
     public function handle(): int
     {
+        $on = (bool) config('fullscreen.on_launch');
+
         if ($this->isAndroid()) {
-            $this->info('No Android assets to copy for Fullscreen.');
+            LaunchSetting::writeAndroid($this->buildPath(), $on);
         }
 
         if ($this->isIos()) {
-            $this->info('No iOS assets to copy for Fullscreen.');
+            LaunchSetting::writeIos($this->buildPath(), $on);
+        }
+
+        if ($this->isAndroid() || $this->isIos()) {
+            $this->info('Fullscreen on launch: '.($on ? 'true' : 'false'));
         }
 
         return self::SUCCESS;

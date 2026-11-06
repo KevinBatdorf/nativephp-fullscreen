@@ -74,6 +74,7 @@ object FullscreenFunctions {
                     controller.systemBarsBehavior =
                         WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 }
+                FullscreenOnLaunch.wanted = true
 
                 Log.d(TAG, "Fullscreen mode entered")
 
@@ -102,6 +103,7 @@ object FullscreenFunctions {
                     )
                     controller.show(WindowInsetsCompat.Type.systemBars())
                 }
+                FullscreenOnLaunch.wanted = false
 
                 Log.d(TAG, "Fullscreen mode exited")
 

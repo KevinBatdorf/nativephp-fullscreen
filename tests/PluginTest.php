@@ -1,5 +1,7 @@
 <?php
 
+use KevinBatdorf\Fullscreen\LaunchSetting;
+
 beforeEach(function () {
     $this->pluginPath = dirname(__DIR__);
     $this->manifestPath = $this->pluginPath.'/nativephp.json';
@@ -760,5 +762,240 @@ describe('Error Handling', function () {
 
         expect($section)->toContain('catch (e: Exception)');
         expect($section)->toContain('BridgeResponse.error');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Fullscreen on launch
+// ---------------------------------------------------------------------------
+
+describe('Fullscreen on launch', function () {
+    beforeEach(function () {
+        $this->build = sys_get_temp_dir().'/fullscreen-build-'.bin2hex(random_bytes(6));
+        mkdir($this->build, 0755, true);
+
+        // A nested dict comes first, so the root dict must be found by document order.
+        $this->writePlist = function (string $relative, array $extraKeys = []) {
+            $path = $this->build.'/'.$relative;
+            if (! is_dir(dirname($path))) {
+                mkdir(dirname($path), 0755, true);
+            }
+
+            $lines = [
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+                '<plist version="1.0">',
+                '<dict>',
+                "\t<key>CFBundleURLTypes</key>",
+                "\t<array>",
+                "\t\t<dict>",
+                "\t\t\t<key>CFBundleTypeRole</key>",
+                "\t\t\t<string>Viewer</string>",
+                "\t\t</dict>",
+                "\t</array>",
+                "\t<key>UILaunchScreen</key>",
+                "\t<false/>",
+            ];
+
+            foreach ($extraKeys as $key => $value) {
+                $lines[] = "\t<key>{$key}</key>";
+                $lines[] = "\t<".($value ? 'true' : 'false')."/>";
+            }
+
+            $lines[] = '</dict>';
+            $lines[] = '</plist>';
+            $lines[] = '';
+
+            file_put_contents($path, implode("\n", $lines));
+
+            return $path;
+        };
+
+        $this->plistKeys = function (string $path) {
+            $plist = new DOMDocument;
+            $plist->load($path);
+            $dict = $plist->getElementsByTagName('dict')->item(0);
+
+            $keys = [];
+            foreach ($dict->childNodes as $node) {
+                if ($node instanceof DOMElement && $node->tagName === 'key') {
+                    $keys[$node->textContent] = $node->nextElementSibling?->tagName;
+                }
+            }
+
+            return $keys;
+        };
+    });
+
+    afterEach(function () {
+        exec('rm -rf '.escapeshellarg($this->build));
+    });
+
+    it('is off by default', function () {
+        $content = file_get_contents($this->pluginPath.'/config/fullscreen.php');
+
+        expect($content)->toContain("env('NATIVEPHP_FULLSCREEN_ON_LAUNCH', false)");
+    });
+
+    it('merges its config in the service provider', function () {
+        $content = file_get_contents($this->pluginPath.'/src/FullscreenServiceProvider.php');
+
+        expect($content)->toContain("mergeConfigFrom(__DIR__.'/../config/fullscreen.php', 'fullscreen')");
+    });
+
+    it('passes the setting to both platforms from the copy-assets hook', function () {
+        $content = file_get_contents($this->pluginPath.'/src/Commands/CopyAssetsCommand.php');
+
+        expect($content)->toContain("config('fullscreen.on_launch')");
+        expect($content)->toContain('LaunchSetting::writeAndroid($this->buildPath(), $on)');
+        expect($content)->toContain('LaunchSetting::writeIos($this->buildPath(), $on)');
+    });
+
+    // -- Android ------------------------------------------------------------
+
+    it('writes the Android bool resource into a build that has no values dir', function () {
+        expect(is_dir($this->build.'/app/src/main/res/values'))->toBeFalse();
+
+        $path = LaunchSetting::writeAndroid($this->build, true);
+
+        expect($path)->toBe($this->build.'/app/src/main/res/values/nativephp_fullscreen.xml');
+
+        $xml = new DOMDocument;
+        expect($xml->load($path))->toBeTrue();
+
+        $bool = $xml->getElementsByTagName('bool')->item(0);
+        expect($bool->getAttribute('name'))->toBe(LaunchSetting::ANDROID_RESOURCE);
+        expect($bool->textContent)->toBe('true');
+    });
+
+    it('writes the Android resource when off too, so turning it off takes effect', function () {
+        LaunchSetting::writeAndroid($this->build, true);
+        $path = LaunchSetting::writeAndroid($this->build, false);
+
+        $xml = new DOMDocument;
+        $xml->load($path);
+
+        expect($xml->getElementsByTagName('bool')->item(0)->textContent)->toBe('false');
+    });
+
+    it('names the Android resource the Kotlin provider looks up', function () {
+        $content = file_get_contents($this->pluginPath.'/resources/android/src/FullscreenOnLaunch.kt');
+
+        expect($content)->toContain('"'.LaunchSetting::ANDROID_RESOURCE.'", "bool"');
+    });
+
+    it('hides the bars from a ContentProvider, which runs before PHP boots', function () {
+        $content = file_get_contents($this->pluginPath.'/resources/android/src/FullscreenOnLaunch.kt');
+
+        expect($content)->toContain('class FullscreenLaunchProvider : ContentProvider()');
+        expect($content)->toContain('registerActivityLifecycleCallbacks');
+    });
+
+    it('declares the launch provider in the Android manifest', function () {
+        $manifest = json_decode(file_get_contents($this->manifestPath), true);
+        $provider = $manifest['android']['providers'][0];
+
+        expect($provider['name'])->toBe('com.kevinbatdorf.plugins.fullscreen.FullscreenLaunchProvider');
+        expect($provider['exported'])->toBeFalse();
+    });
+
+    it('only re-hides on resume while fullscreen is wanted', function () {
+        $content = file_get_contents($this->pluginPath.'/resources/android/src/FullscreenOnLaunch.kt');
+
+        expect($content)->toMatch('/onActivityResumed\(activity: Activity\) \{\s*if \(!FullscreenOnLaunch\.wanted\) return/');
+    });
+
+    it('tracks enter and exit so resume respects them', function () {
+        $content = file_get_contents($this->pluginPath.'/resources/android/src/FullscreenFunctions.kt');
+
+        expect(($this->extractClassSection)($content, 'Enter'))->toContain('FullscreenOnLaunch.wanted = true');
+        expect(($this->extractClassSection)($content, 'Exit'))->toContain('FullscreenOnLaunch.wanted = false');
+    });
+
+    // -- iOS ----------------------------------------------------------------
+
+    it('writes the setting and the launch-screen status bar key into both plists', function () {
+        ($this->writePlist)('NativePHP/Info.plist');
+        ($this->writePlist)('NativePHP-simulator-Info.plist');
+
+        $written = LaunchSetting::writeIos($this->build, true);
+
+        expect($written)->toHaveCount(2);
+
+        foreach ($written as $path) {
+            $keys = ($this->plistKeys)($path);
+
+            expect($keys[LaunchSetting::IOS_PLIST_KEY])->toBe('true');
+            expect($keys['UIStatusBarHidden'])->toBe('true');
+        }
+    });
+
+    it('leaves the rest of Info.plist intact', function () {
+        $path = ($this->writePlist)('NativePHP/Info.plist');
+
+        LaunchSetting::writeIos($this->build, true);
+
+        $keys = ($this->plistKeys)($path);
+
+        expect($keys)->toHaveKey('CFBundleURLTypes');
+        expect($keys['UILaunchScreen'])->toBe('false');
+        expect(file_get_contents($path))->toContain('<string>Viewer</string>');
+    });
+
+    it('removes the status bar key it added once the setting is turned off', function () {
+        $path = ($this->writePlist)('NativePHP/Info.plist');
+
+        LaunchSetting::writeIos($this->build, true);
+        LaunchSetting::writeIos($this->build, false);
+
+        $keys = ($this->plistKeys)($path);
+
+        expect($keys[LaunchSetting::IOS_PLIST_KEY])->toBe('false');
+        expect($keys)->not->toHaveKey('UIStatusBarHidden');
+    });
+
+    it("keeps an app's own status bar setting when the plugin never set one", function () {
+        $path = ($this->writePlist)('NativePHP/Info.plist', ['UIStatusBarHidden' => true]);
+
+        LaunchSetting::writeIos($this->build, false);
+
+        $keys = ($this->plistKeys)($path);
+
+        expect($keys['UIStatusBarHidden'])->toBe('true');
+    });
+
+    it('stays idempotent across repeated builds', function () {
+        $path = ($this->writePlist)('NativePHP/Info.plist');
+
+        LaunchSetting::writeIos($this->build, true);
+        $once = file_get_contents($path);
+
+        LaunchSetting::writeIos($this->build, true);
+
+        expect(file_get_contents($path))->toBe($once);
+    });
+
+    it('skips plists the build does not have', function () {
+        ($this->writePlist)('NativePHP/Info.plist');
+
+        $written = LaunchSetting::writeIos($this->build, true);
+
+        expect($written)->toBe([$this->build.'/NativePHP/Info.plist']);
+    });
+
+    it('registers an iOS init function that reads the setting', function () {
+        $manifest = json_decode(file_get_contents($this->manifestPath), true);
+        $content = file_get_contents($this->pluginPath.'/resources/ios/Sources/FullscreenOnLaunch.swift');
+
+        expect($manifest['ios']['init_function'])->toBe('registerFullscreenOnLaunch');
+        expect($content)->toContain('func registerFullscreenOnLaunch()');
+        expect($content)->toContain('forInfoDictionaryKey: "'.LaunchSetting::IOS_PLIST_KEY.'"');
+    });
+
+    it('stops applying on iOS once exit is called', function () {
+        $content = file_get_contents($this->pluginPath.'/resources/ios/Sources/FullscreenFunctions.swift');
+
+        expect($content)->toContain('static func startOnLaunch()');
+        expect($content)->toMatch('/func applyWhenWebViewAppears\(attemptsLeft: Int\) \{\s*guard isFullscreen, attemptsLeft > 0/');
     });
 });

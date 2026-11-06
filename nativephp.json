@@ -32,12 +32,20 @@
         "min_version": 21,
         "dependencies": {
             "implementation": []
-        }
+        },
+        "providers": [
+            {
+                "name": "com.kevinbatdorf.plugins.fullscreen.FullscreenLaunchProvider",
+                "authorities": "${applicationId}.nativephp-fullscreen",
+                "exported": false
+            }
+        ]
     },
 
     "ios": {
         "info_plist": {},
         "min_version": "15.0",
+        "init_function": "registerFullscreenOnLaunch",
         "dependencies": {
             "swift_packages": [],
             "pods": []
